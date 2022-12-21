@@ -1,6 +1,5 @@
-#################################################
-###        IMPORT NECESSARY LIBRARIES         ###
-#################################################
+#IMPORT NECESSARY LIBRARIES
+
 import os
 import pandas as pd
 from flask import (
@@ -9,11 +8,7 @@ from flask import (
     jsonify,
     request,
     redirect)
-from flask_sqlalchemy import SQLAlchemy
-import sqlalchemy
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, func
+
 import urllib
 
 from datetime import datetime
@@ -22,27 +17,8 @@ from datetime import datetime
 app = Flask(__name__)
 
 
-#################DATABASE SETUP######################
-
-# POSTGRES CONNECTION STRINGS
-# connection_string = 'postgres://ytp_database_user:jcvnTSjL0UpR4vYz1lpZWLF9AQFRbf74@dpg-ceg4ag4gqg4b3hc9cfig-a/ytp_database'
-
-
-#CONNECT TO DATABASE 
-# engine = create_engine(f'{connection_string}')
-
-
-######################### CONNECT TO SESSION ############################
-# session = Session(engine)
-# connection = engine.connect()
-
-# youtubeVids = pd.read_sql(f"SELECT * FROM youtube_table", connection)
-
+# Reading Data from the csv file which is the minmal sample set from the dataset
 youtubeVids = pd.read_csv('./data.csv')
-
-############# DATA CLEAN - FIX ISSUES AND RENAME COLUMNS ################
-# FIX THE 29 NON PROFITS ISSUE
-# youtubeVids['categoryId'] = youtubeVids['categoryId'].replace(["29"], "Nonprofits & Activism")
 
 # RENAME COLUMNS
 youtubeVids = youtubeVids.rename(columns={'country': 'country', 'video_id': 'video_id', 
@@ -51,58 +27,42 @@ youtubeVids = youtubeVids.rename(columns={'country': 'country', 'video_id': 'vid
 'view_count': 'views', 'likes': 'likes', 'dislikes': 'dislikes', 
 'comment_count': 'comments', 'thumbnail_link': 'thumbnail_link'})
 
-# Close connection and Session
-# connection.close()
-# session.close()
 
-#################################################
-####              HOME ROUTE                 ####
-#################################################
+# HOME ROUTE
 @app.route("/")
 def home():
-    # print(index.html)
     return render_template("index.html")
 
-#################################################
-####      ROUTES FOR DROP DOWN MENU          ####
-#################################################
+##############ROUTES FOR DROP DOWN MENU############
 
-##################### ROUTE FOR DROP DOWN MENU 1 ########################
+# ROUTE FOR DROP DOWN MENU 1
+
 @app.route("/dropdown1")
 def dropdown1():
     country_df = youtubeVids['country'].value_counts()
     countryList = country_df.index.tolist()
-    print(countryList)
     return jsonify(countryList)
 
-##################### ROUTE FOR DROP DOWN MENU 2 ########################
+# ROUTE FOR DROP DOWN MENU 2
 @app.route("/dropdown2")
 def dropdown2():
-    # youtubeVids['categoryId'] = youtubeVids['categoryId'].replace(
-    #     ["29"], "Nonprofits & Activism")
     category_df = youtubeVids['categoryId'].value_counts()
     categoryList = category_df.index.tolist()
-    print(categoryList)
     return jsonify(categoryList)
 
-##################### ROUTE FOR DROP DOWN MENU 3 ########################
+# ROUTE FOR DROP DOWN MENU 3
 @app.route("/dropdown3")
 def dropdown3():
     metricList = ['views', 'likes', 'dislikes', 'comments']
-    print(metricList)
     return jsonify(metricList)
 
-#################################################
-####             ROUTES FOR DATA             ####
-#################################################
+
+# ROUTES FOR DATA
 
 ####################### ROUTE FOR BAR GRAPH 1 ##########################
+
 @app.route("/dataset1/<country>/<metric>")
 def dataset1(country, metric):
-    # Fix the 29 vs Non profits issue
-    # youtubeVids['categoryId'] = youtubeVids['categoryId'].replace(
-    #     ["29"], "Nonprofits & Activism")
-
     # Sort dataframe by country & category & metric
     barGraph1Data = youtubeVids[youtubeVids["country"] == country]
     barGraph1Data = barGraph1Data.groupby('categoryId').mean()
@@ -110,21 +70,18 @@ def dataset1(country, metric):
 
     ##### Convert data to a dictionary #####
     barGraph1Data = barGraph1Data.to_dict()
+
     ##### Jsonify the data #####
     return jsonify(barGraph1Data)
 
 ####################### ROUTE FOR BAR GRAPH 2 ##########################
 @app.route("/dataset2/<country>/<category>/<metric>")
 def dataset2(country=None, category=None, metric=None):
-    # Fix the 29 vs Non profits issue
-    # youtubeVids['categoryId'] = youtubeVids['categoryId'].replace(
-    #     ["29"], "Nonprofits & Activism")
-
     # Sort dataframe by country & category & select columns to keep
     barGraph2Data = youtubeVids[youtubeVids["country"] == country]
     barGraph2Data = barGraph2Data[barGraph2Data["categoryId"] == category]
-    barGraph2Data = barGraph2Data.loc[:, [
-        "views", "comments", "likes", "dislikes", "country", "categoryId"]]
+    barGraph2Data = barGraph2Data.loc[:, ["views", "comments", "likes", 
+                                            "dislikes", "country", "categoryId"]]
 
     # Create a table (df) of metric values vs the count of each value for bargraph
     metric_values = ["views", "comments", "likes", "dislikes"]
@@ -141,8 +98,10 @@ def dataset2(country=None, category=None, metric=None):
         {'Metric_Values': metric_values,
          'Max_Value': metricMaxValues
          })
+
     ##### Convert data to a dictionary #####
     barGraph2_df = barGraph2_df.to_dict()
+
     ##### Jsonify the data #####
     return jsonify(barGraph2_df)
 
@@ -178,10 +137,6 @@ def dataset3(country, metric):
 ####################### ROUTE FOR TOP 10 TABLE ##########################
 @app.route("/dataset4/<country>/<category>/<metric>")
 def dataset4(country=None, category=None, metric=None):
-    # Fix the 29 vs Non profits issue
-    # youtubeVids['categoryId'] = youtubeVids['categoryId'].replace(
-    #     ["29"], "Nonprofits & Activism")
-
     # Sort dataframe by country & category
     table_df = youtubeVids[youtubeVids["country"] == country]
     table_df = table_df[table_df["categoryId"] == category]
@@ -191,23 +146,21 @@ def dataset4(country=None, category=None, metric=None):
     sorted_table_df = table_df.sort_values(by=metric, ascending=False)
 
     # Remove duplicate videos from dataframe
-    sorted_table_df = sorted_table_df.drop_duplicates(
-        subset='title', keep="first")
+    sorted_table_df = sorted_table_df.drop_duplicates(subset='title', keep="first")
 
-    # print('metric=', metric)
     # Select top 10 (based on metric selected) from dataframe
     top10TableData_df = sorted_table_df.nlargest(10, metric)
 
     # Select columns to keep for table
     top10TableData_df = top10TableData_df[['categoryId', 'country', 'title', 'channelTitle',
-                                           'views', 'comments', 'trending_date', 'likes', 'dislikes', 'video_id', 'thumbnail_link']]
+                                           'views', 'comments', 'trending_date', 
+                                           'likes', 'dislikes', 'video_id', 'thumbnail_link']]
 
     ##### Convert data to a dictionary #####
     top10TableData = top10TableData_df.to_dict(orient="records")
+
     ##### Jsonify the data #####
-    # print(jsonify(top10TableData))
     return jsonify(top10TableData)
-# return render_template('test_out.html', data=top10TableData)
 
 ######################### ROUTE FOR ALL DATA ############################
 @app.route("/allData")
@@ -218,14 +171,9 @@ def allData():
 
     return jsonify(allData)
 
-#################################################
-####             CLOSE IF LOOP               ####
-#################################################
-
+# CLOSE IF LOOP
 
 if __name__ == "__main__":
     app.run(debug=True)
 
-#################################################
-####            END OF FLASK APP             ####
-#################################################
+# END OF FLASK APP           
